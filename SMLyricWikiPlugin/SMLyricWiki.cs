@@ -23,12 +23,10 @@ namespace SMLyricWikiPlugin
     public class SMLyricWikiPlugin : IPlugin, ILyrics
     {
         public string Name => "SMLyricWiki";
-        public string Version => "0.1";
+        public string Version => "0.1.1";
 
         public async Task GetLyrics(PluginLyricsInput input, CancellationToken ct, Action<PluginLyricsResult> updateAction)
         {
-            var result = new PluginLyricsResult();
-            result.FoundByPlugin = "SMLyricWiki";
             String url = string.Format("http://lyrics.wikia.com/api.php?action=lyrics&artist={0}&song={1}&fmt=xml", HttpUtility.UrlEncode(input.Artist), HttpUtility.UrlEncode(input.Title));
             var client = new HttpClient();
             String xml = string.Empty;
@@ -43,25 +41,38 @@ namespace SMLyricWikiPlugin
                 return;
             }
             XDocument xdoc = XDocument.Parse(xml);
-            result.Artist = xdoc.Element("LyricsResult").Element("artist").Value.ToString();
-            result.Title = xdoc.Element("LyricsResult").Element("song").Value.ToString();
             if (xdoc.Element("LyricsResult").Element("lyrics").Value.ToString() != "Not found")
             {
                 if (xdoc.Element("LyricsResult").Element("lyrics").Value.ToString() == "Instrumental")
                 {
+                    var result = new PluginLyricsResult();
+                    result.Artist = xdoc.Element("LyricsResult").Element("artist").Value.ToString();
+                    result.Title = xdoc.Element("LyricsResult").Element("song").Value.ToString();
+                    result.FoundByPlugin = string.Format("{0} v{1}", Name, Version);
                     result.Lyrics = "<p>[Instrumental]</p>";
                     updateAction(result);
                 }
                 else
                 {
                     url = xdoc.Element("LyricsResult").Element("url").Value.ToString();
-                    result.Lyrics = await DownloadLyrics(url, ct);
-                    if (string.IsNullOrEmpty(result.Lyrics))
+                    String lyrics = await DownloadLyrics(url, ct);
+                    if (!string.IsNullOrEmpty(lyrics))
                     {
-                        result.Lyrics = await DownloadLyrics("http://lyrics.wikia.com/Gracenote:" + url.Substring(24), ct);
+                        var result = new PluginLyricsResult();
+                        result.Artist = xdoc.Element("LyricsResult").Element("artist").Value.ToString();
+                        result.Title = xdoc.Element("LyricsResult").Element("song").Value.ToString();
+                        result.FoundByPlugin = string.Format("{0} v{1}", Name, Version);
+                        result.Lyrics = lyrics;
+                        updateAction(result);
                     }
-                    if (!string.IsNullOrEmpty(result.Lyrics))
+                    lyrics = await DownloadLyrics("http://lyrics.wikia.com/Gracenote:" + url.Substring(24), ct);
+                    if (!string.IsNullOrEmpty(lyrics))
                     {
+                        var result = new PluginLyricsResult();
+                        result.Artist = xdoc.Element("LyricsResult").Element("artist").Value.ToString();
+                        result.Title = string.Format("Gracenote: {0}", xdoc.Element("LyricsResult").Element("song").Value.ToString());
+                        result.FoundByPlugin = string.Format("{0} v{1}", Name, Version);
+                        result.Lyrics = lyrics;
                         updateAction(result);
                     }
                 }
