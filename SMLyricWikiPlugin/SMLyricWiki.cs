@@ -23,7 +23,7 @@ namespace SMLyricWikiPlugin
     public class SMLyricWikiPlugin : IPlugin, ILyrics
     {
         public string Name => "SMLyricWiki";
-        public string Version => "0.1.1";
+        public string Version => "1.0.0";
 
         public async Task GetLyrics(PluginLyricsInput input, CancellationToken ct, Action<PluginLyricsResult> updateAction)
         {
@@ -49,7 +49,7 @@ namespace SMLyricWikiPlugin
                     result.Artist = xdoc.Element("LyricsResult").Element("artist").Value.ToString();
                     result.Title = xdoc.Element("LyricsResult").Element("song").Value.ToString();
                     result.FoundByPlugin = string.Format("{0} v{1}", Name, Version);
-                    result.Lyrics = "<p>[Instrumental]</p>";
+                    result.Lyrics = "<p>[Instrumental]</p>\n<p><i><sub>powered by LyricWiki</sub></i></p>";
                     updateAction(result);
                 }
                 else
@@ -100,21 +100,24 @@ namespace SMLyricWikiPlugin
             {
                 if (match.Groups["Lyrics"].Value != "&#10;" && !WebUtility.HtmlDecode(match.Groups["Lyrics"].Value).Contains("Unfortunately, we are not licensed to display the full lyrics"))
                 {
-                    lyrics = CleanLine(WebUtility.HtmlDecode(match.Groups["Lyrics"].Value));
+                    lyrics = CleanLyrics(WebUtility.HtmlDecode(match.Groups["Lyrics"].Value));
                 }
             }
             return lyrics;
         }
 
-        private static string CleanLine(String line)
+        private static string CleanLyrics(String lyrics)
         {
-            line = Regex.Replace(line, "<a href=[^>]+>", "", RegexOptions.IgnoreCase);
-            line = line.Replace("</a>", "");
-            line = line.Replace("<br />", "\n").Replace("<br/>", "\n").Replace("<br>", "\n").Replace("\n", "<br/>\n");
-            line = line.Replace("<br/>\n<br/>\n", "</p>\n<p>");
-            line = line.Replace("´", "'").Replace("`", "'").Replace("’", "'").Replace("‘", "'");
-            line = line.Replace("…", "...").Replace(" ...", "...").Trim();
-            return "<p>" + line.Trim() + "</p>";
+            lyrics = Regex.Replace(lyrics, "<a href=[^>]+>", "", RegexOptions.IgnoreCase);
+            lyrics = lyrics.Replace("</a>", "");
+            lyrics = lyrics.Replace("<br />", "\n").Replace("<br/>", "\n").Replace("<br>", "\n").Replace("\n", "<br/>\n");
+            lyrics = lyrics.Replace("<br/>\n<br/>\n", "</p>\n<p>");
+            lyrics = lyrics.Replace("´", "'").Replace("`", "'").Replace("’", "'").Replace("‘", "'");
+            lyrics = lyrics.Replace("…", "...").Replace(" ...", "...");
+            lyrics = lyrics.Replace("<p><br/>\n", "<p>\n");
+            lyrics = Regex.Replace(lyrics, @"\s+<br/>", "<br/>", RegexOptions.IgnoreCase);
+            lyrics = Regex.Replace(lyrics, @"\s+<p/>", "<p/>", RegexOptions.IgnoreCase);
+            return "<p>" + lyrics.Trim() + "</p>\n<p><i><sub>powered by LyricWiki</sub></i></p>";
         }
     }
 }
